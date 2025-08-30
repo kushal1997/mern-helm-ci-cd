@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Checkout Helm Repo') {
             steps {
-                git 'https://github.com/kushal1997/mern-helm-ci-cd.git'
+                git branch: 'testing', url: 'https://github.com/kushal1997/mern-helm-ci-cd.git'
             }
         }
 
