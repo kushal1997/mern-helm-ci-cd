@@ -1,3 +1,13 @@
+frontend:
+  image: noizy23yo/learner-report-frontend:latest
+  service:
+    port: 80
+
+backend:
+  image: noizy23yo/learner-report-backend:latest
+  service:
+    port: 3001
+
 ingress:
   enabled: true
   className: "nginx"
@@ -14,8 +24,3 @@ ingress:
           service:
             name: backend-service
             port: 3001
-          secret:
-            ATLAS_URI: "mongodb+srv://kushalrao103:eZgLARR1p2xSGfGU@cluster0.1a3iq.mongodb.net/Learner_Report?retryWrites=true&w=majority"
-            HASH_KEY: "thisIsMyHashKey"
-            JWT_SECRET_KEY: "thisIsMyJwtSecretKey"
-
