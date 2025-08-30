@@ -27,6 +27,17 @@ pipeline {
             }
         }
 
+        stage('Verify K8s Access') {
+            steps {
+                sh '''
+                export AWS_DEFAULT_REGION=us-west-2
+                kubectl get nodes
+                kubectl get pods -A
+                '''
+            }
+        }
+
+
 
         stage('Deploy to EKS with Helm') {
             steps {
@@ -35,22 +46,24 @@ pipeline {
                     string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     sh '''
+                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
                     export AWS_DEFAULT_REGION=us-west-2
 
+                    echo ">>> Updating kubeconfig for EKS"
                     aws eks update-kubeconfig --name mern-cluster --region us-west-2
 
-                    # make sure helm sees AWS creds when calling kubectl
-                    AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-                    AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-                    AWS_DEFAULT_REGION=us-west-2 \
+                    echo ">>> Verifying Kubernetes access"
+                    kubectl get nodes
+
+                    echo ">>> Deploying with Helm"
                     helm upgrade --install mern-app ./mern-chart \
                     --set frontend.image=$FRONTEND_IMAGE \
                     --set backend.image=$BACKEND_IMAGE
                     '''
                 }
-
-
             }
         }
+
     }
 }
