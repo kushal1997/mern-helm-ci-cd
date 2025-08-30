@@ -21,12 +21,19 @@ pipeline {
                 ]) {
                     sh '''
                     export AWS_DEFAULT_REGION=us-west-2
+
                     aws eks update-kubeconfig --name mern-cluster --region us-west-2
+
+                    # make sure helm sees AWS creds when calling kubectl
+                    AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+                    AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+                    AWS_DEFAULT_REGION=us-west-2 \
                     helm upgrade --install mern-app ./mern-chart \
                     --set frontend.image=$FRONTEND_IMAGE \
                     --set backend.image=$BACKEND_IMAGE
                     '''
                 }
+
 
             }
         }
