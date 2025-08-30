@@ -27,26 +27,26 @@ pipeline {
             }
         }
 
-        stage('Verify K8s Access') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    sh '''
-                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                    export AWS_DEFAULT_REGION=us-west-2
+        // stage('Verify K8s Access') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+        //             string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+        //         ]) {
+        //             sh '''
+        //             export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+        //             export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+        //             export AWS_DEFAULT_REGION=us-west-2
 
-                    # Ensure kubeconfig is updated for this session
-                    aws eks update-kubeconfig --name mern-cluster --region us-west-2
+        //             # Ensure kubeconfig is updated for this session
+        //             aws eks update-kubeconfig --name mern-cluster --region us-west-2
 
-                    kubectl get nodes
-                    kubectl get pods -A
-                    '''
-                }
-            }
-        }
+        //             kubectl get nodes
+        //             kubectl get pods -A
+        //             '''
+        //         }
+        //     }
+        // }
 
 
 
@@ -69,7 +69,7 @@ pipeline {
                     kubectl get nodes
 
                     echo ">>> Deploying with Helm"
-                    helm upgrade --install mern-app ./mern-chart \
+                    helm upgrade --install k-mern-app ./mern-chart \
                     --set frontend.image=$FRONTEND_IMAGE \
                     --set backend.image=$BACKEND_IMAGE
                     '''
