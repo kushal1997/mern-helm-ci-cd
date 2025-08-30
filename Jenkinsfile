@@ -49,11 +49,7 @@ pipeline {
                     aws eks update-kubeconfig --name k-mern-cluster --region us-west-2
 
                     echo ">>> Deploying MERN app"
-                    helm upgrade --install mern-app ./mern-chart \
-                      --set frontend.image=$FRONTEND_IMAGE \
-                      --set backend.image=$BACKEND_IMAGE
-                      --set ingress.enabled=true \
-                      --set ingress.className=nginx
+                    helm upgrade --install mern-app ./mern-chart --set frontend.image=$FRONTEND_IMAGE --set backend.image=$BACKEND_IMAGE --set ingress.enabled=true --set ingress.className=nginx
                     echo ">>> Post-deploy check"
                     kubectl get pods
                     kubectl get svc
