@@ -29,13 +29,25 @@ pipeline {
 
         stage('Verify K8s Access') {
             steps {
-                sh '''
-                export AWS_DEFAULT_REGION=us-west-2
-                kubectl get nodes
-                kubectl get pods -A
-                '''
+                withCredentials([
+                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh '''
+                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                    export AWS_DEFAULT_REGION=us-west-2
+
+                    # Ensure kubeconfig is updated for this session
+                    aws eks update-kubeconfig --name mern-cluster --region us-west-2
+
+                    kubectl get nodes
+                    kubectl get pods -A
+                    '''
+                }
             }
         }
+
 
 
 
