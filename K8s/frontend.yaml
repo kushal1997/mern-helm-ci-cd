@@ -1,12 +1,3 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: frontend-config
-data:
-  REACT_APP_API_BASE_URL: "http://localhost:3001"
-
----
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,12 +18,6 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 80
-          env:
-            - name: REACT_APP_API_BASE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: frontend-config
-                  key: REACT_APP_API_BASE_URL
 ---
 apiVersion: v1
 kind: Service
