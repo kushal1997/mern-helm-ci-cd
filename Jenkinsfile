@@ -19,18 +19,15 @@ pipeline {
                     string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
-                    sh """
-                    export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-                    export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+                    sh '''
                     export AWS_DEFAULT_REGION=us-west-2
-
                     aws eks update-kubeconfig --name mern-cluster --region us-west-2
-
                     helm upgrade --install mern-app ./mern-chart \
-                      --set frontend.image=${params.FRONTEND_IMAGE} \
-                      --set backend.image=${params.BACKEND_IMAGE}
-                    """
+                    --set frontend.image=$FRONTEND_IMAGE \
+                    --set backend.image=$BACKEND_IMAGE
+                    '''
                 }
+
             }
         }
     }
