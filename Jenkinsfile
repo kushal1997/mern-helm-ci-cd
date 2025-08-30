@@ -12,6 +12,21 @@ pipeline {
                 git 'https://github.com/kushal1997/mern-helm-ci-cd.git'
             }
         }
+        stage('Debug AWS + EKS') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh '''
+                    export AWS_DEFAULT_REGION=us-west-2
+                    aws sts get-caller-identity
+                    aws eks get-token --cluster-name mern-cluster --region us-west-2
+                    '''
+                }
+            }
+        }
+
 
         stage('Deploy to EKS with Helm') {
             steps {
