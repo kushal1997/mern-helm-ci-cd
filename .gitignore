@@ -1,2 +1,3 @@
 # .gitignore
-backend-secret.yaml
+K8s/backend-secret.yaml
+values.yaml
