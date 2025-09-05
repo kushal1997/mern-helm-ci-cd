@@ -2,6 +2,8 @@ pipeline {
     agent any
 
     parameters {
+        string(name: 'CLUSTER_NAME', defaultValue: 'k-mern-clus', description: 'EKS cluster name')
+        string(name: 'REGION', defaultValue: 'us-west-2', description: 'AWS region')
         string(name: 'FRONTEND_IMAGE', defaultValue: 'noizy23yo/learner-report-frontend:latest', description: 'Frontend image tag')
         string(name: 'BACKEND_IMAGE', defaultValue: 'noizy23yo/learner-report-backend:latest', description: 'Backend image tag')
     }
@@ -22,13 +24,19 @@ pipeline {
                     sh '''
                     export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
                     export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                    export AWS_DEFAULT_REGION=us-west-2
+                    export AWS_DEFAULT_REGION=${REGION}
 
-                    echo ">>> Updating kubeconfig"
-                    aws eks update-kubeconfig --name k-mern-cluster --region us-west-2
+                    echo ">>> Confirm caller identity"
+                    aws sts get-caller-identity
 
-                    echo ">>> Cluster Info"
-                    kubectl get nodes
+                    echo ">>> Updating kubeconfig for ${CLUSTER_NAME}"
+                    aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${REGION}
+
+                    echo ">>> Kube context"
+                    kubectl config current-context
+
+                    echo ">>> Cluster nodes & pods (all namespaces)"
+                    kubectl get nodes -o wide
                     kubectl get pods -A
                     '''
                 }
@@ -44,19 +52,42 @@ pipeline {
                     sh '''
                     export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
                     export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                    export AWS_DEFAULT_REGION=us-west-2
+                    export AWS_DEFAULT_REGION=${REGION}
 
-                    aws eks update-kubeconfig --name k-mern-cluster --region us-west-2
+                    aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${REGION}
 
-                    echo ">>> Deploying MERN app"
-                    helm upgrade --install mern-app ./mern-chart --set frontend.image=$FRONTEND_IMAGE --set backend.image=$BACKEND_IMAGE --set ingress.enabled=true --set ingress.className=nginx
-                    echo ">>> Post-deploy check"
-                    kubectl get pods
+                    echo ">>> Deploying MERN app via Helm (will wait for resources to be ready)"
+                    helm repo update || true
+                    helm upgrade --install mern-app ./mern-chart \
+                      --set frontend.image=${FRONTEND_IMAGE} \
+                      --set backend.image=${BACKEND_IMAGE} \
+                      --set ingress.enabled=true \
+                      --set ingress.className=nginx \
+                      --wait --timeout 10m
+
+                    echo ">>> Post-deploy checks"
+                    kubectl get pods -o wide
                     kubectl get svc
                     kubectl get ingress
+
+                    # If you have deployments named frontend/backend, wait for their rollout:
+                    kubectl rollout status deployment/frontend --timeout=120s || true
+                    kubectl rollout status deployment/backend --timeout=120s || true
+
+                    echo ">>> Done"
                     '''
                 }
             }
+        }
+    }
+
+    post {
+        failure {
+            echo "Deployment failed — printing troubleshooting info:"
+            sh '''
+            kubectl get pods -A
+            kubectl describe pods -A | sed -n '1,200p'
+            '''
         }
     }
 }
