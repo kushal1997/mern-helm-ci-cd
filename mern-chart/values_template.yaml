@@ -8,9 +8,9 @@ backend:
   service:
     port: 3001
   secret:
-    ATLAS_URI: "mongodb+srv://kushalrao103:eZgLARR1p2xSGfGU@cluster0.1a3iq.mongodb.net/Learner_Report?retryWrites=true&w=majority"
-    HASH_KEY: "thisIsMyHashKey"
-    JWT_SECRET_KEY: "thisIsMyJwtSecretKey"
+    ATLAS_URI: <mongo_url>
+    HASH_KEY: <hash_secret_key>
+    JWT_SECRET_KEY: <jwt_secret_key>
 
 ingress:
   enabled: true
