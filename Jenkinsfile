@@ -54,21 +54,27 @@ pipeline {
         stage('Helm Lint & Render (dry-run)') {
             steps {
                 script {
-                    // Ensure KUBECONFIG env var points to ${WORKSPACE}/kubeconfig (set above)
-                    sh '''
+                    sh '''#!/bin/bash
                     set -o pipefail
-                    kubectl --kubeconfig ${KUBECONFIG} get ns ${CHART_PATH} || kubectl --kubeconfig ${KUBECONFIG} create ns ${CHART_PATH}
+                    KUBECONFIG="${KUBECONFIG:-$WORKSPACE/kubeconfig}"
+                    echo "Using kubeconfig: $KUBECONFIG"
 
-                    helm lint ${CHART_PATH}
-                    helm upgrade --install learner-report ${CHART_PATH} \
-                      -n ${CHART_PATH} -f deployment/environments/values-dev.yaml \
-                      --set frontend.image=${FRONTEND_IMAGE} \
-                      --set backend.image=${BACKEND_IMAGE} \
-                      --dry-run --debug
+                    # create namespace if not exists
+                    if ! kubectl --kubeconfig "$KUBECONFIG" get ns "${CHART_PATH}" >/dev/null 2>&1; then
+                    kubectl --kubeconfig "$KUBECONFIG" create ns "${CHART_PATH}"
+                    fi
+
+                    helm lint "${CHART_PATH}"
+                    helm upgrade --install learner-report "${CHART_PATH}" \
+                    -n "${CHART_PATH}" -f deployment/environments/values-dev.yaml \
+                    --set frontend.image="${FRONTEND_IMAGE}" \
+                    --set backend.image="${BACKEND_IMAGE}" \
+                    --dry-run --debug
                     '''
                 }
             }
         }
+
 
         stage('Deploy') {
             steps {
