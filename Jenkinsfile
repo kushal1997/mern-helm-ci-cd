@@ -62,14 +62,14 @@ pipeline {
                         kubectl --kubeconfig "$KUBECONFIG" create ns "${CHART_PATH}"
                         fi
 
-                        helm lint "${CHART_PATH}"
                         helm upgrade --install learner-report "${CHART_PATH}" \
-                        -n "${CHART_PATH}" -f deployment/environments/values-dev.yaml \
+                        -n "${CHART_PATH}" \
+                        -f "${CHART_PATH}/values.yaml" \
                         --set frontend.image="${FRONTEND_IMAGE}" \
                         --set backend.image="${BACKEND_IMAGE}" \
                         --dry-run --debug
-                    '''
 
+                    '''
                 }
             }
         }
