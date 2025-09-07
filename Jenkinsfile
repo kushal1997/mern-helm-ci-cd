@@ -49,11 +49,11 @@ pipeline {
                 withCredentials([file(credentialsId: env.KUBECONFIG_CRED_ID, variable: 'KUBECONFIG_FILE')]) {
                 sh '''
                     export KUBECONFIG="$KUBECONFIG_FILE"
-                    helm version
-                    helm lint ${CHART_PATH} || true
-                    # Do a dry-run render to catch templating errors
-                    helm template --values ${CHART_PATH}/values.yaml ${CHART_PATH} --set frontend.image=${FRONTEND_IMAGE} --set backend.image=${BACKEND_IMAGE} --namespace ${NAMESPACE} --debug > /tmp/helm-template-output.yaml
-                    echo "Helm template rendered to /tmp/helm-template-output.yaml"
+                    kubectl get ns ${CHART_PATH} || kubectl create ns ${CHART_PATH}
+                    helm upgrade --install learner-report ${CHART_PATH} \
+                    -n ${CHART_PATH} -f deployment/environments/values-dev.yaml \
+                    --set frontend.image=${FRONTEND_IMAGE},frontend.tag=${FE_TAG} \
+                    --set backend.image=${BACKEND_IMAGE},backend.tag=${BE_TAG}
                 '''
                 }
             }
