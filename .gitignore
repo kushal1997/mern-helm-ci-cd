@@ -1,0 +1,4 @@
+# .gitignore
+K8s/backend-secret.yaml
+# Ignore Helm values files
+/mern-chart/values.yaml

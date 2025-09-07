@@ -1,0 +1,30 @@
+frontend:
+  image: noizy23yo/learner-report-frontend:latest
+  service:
+    port: 80
+
+backend:
+  image: noizy23yo/learner-report-backend:latest
+  service:
+    port: 3001
+  secret:
+    ATLAS_URI: <mongo_url>
+    HASH_KEY: <hash_secret_key>
+    JWT_SECRET_KEY: <jwt_secret_key>
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: ""
+      paths:
+        - path: /
+          pathType: Prefix
+          service:
+            name: frontend-service
+            port: 80
+        - path: /api
+          pathType: Prefix
+          service:
+            name: backend-service
+            port: 3001
