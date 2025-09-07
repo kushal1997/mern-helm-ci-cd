@@ -77,14 +77,30 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                sh '''
-                helm upgrade --install learner-report ${CHART_PATH} \
-                  -n ${CHART_PATH} -f deployment/environments/values-dev.yaml \
-                  --set frontend.image=${FRONTEND_IMAGE} \
-                  --set backend.image=${BACKEND_IMAGE}
+                sh '''#!/bin/bash
+                    set -euo pipefail
+                    KUBECONFIG="${KUBECONFIG:-$WORKSPACE/kubeconfig}"
+                    echo "Using kubeconfig: $KUBECONFIG"
+                    echo "CHART_PATH=${CHART_PATH}"
+                    echo "Listing chart files:"
+                    ls -la "${CHART_PATH}" || true
+
+                    # Use the chart's values.yaml explicitly
+                    VALUES_FILE="${CHART_PATH}/values.yaml"
+                    if [ ! -f "${VALUES_FILE}" ]; then
+                    echo "ERROR: ${VALUES_FILE} not found!"
+                    exit 1
+                    fi
+
+                    helm upgrade --install learner-report "${CHART_PATH}" \
+                    -n "${CHART_PATH}" \
+                    -f "${VALUES_FILE}" \
+                    --set frontend.image="${FRONTEND_IMAGE}" \
+                    --set backend.image="${BACKEND_IMAGE}"
                 '''
             }
         }
+
     }
 
     post {
