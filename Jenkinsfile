@@ -8,11 +8,16 @@ pipeline {
         string(name: 'FRONTEND_IMAGE', defaultValue: 'noizy23yo/learner-report-frontend:latest', description: 'Frontend image tag')
         string(name: 'BACKEND_IMAGE', defaultValue: 'noizy23yo/learner-report-backend:latest', description: 'Backend image tag')
     }
+
     environment {
-        KUBECONFIG_CRED_ID = 'kubeconfig'     
-        MONGO_URI_CRED_ID = 'MONGO_URI'       
-        HASH_KEY_CRED_ID = 'HASH_KEY'         
-        JWT_SECRET_CRED_ID = 'JWT_SECRET'     
+        // These should point to your Jenkins credential IDs (string/secret text)
+        AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')     // change to your credential id
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY') // change to your credential id
+        AWS_DEFAULT_REGION = "${params.REGION}"
+        KUBECONFIG = "${WORKSPACE}/kubeconfig"
+        MONGO_URI_CRED_ID = 'MONGO_URI'
+        HASH_KEY_CRED_ID = 'HASH_KEY'
+        JWT_SECRET_CRED_ID = 'JWT_SECRET'
     }
 
     stages {
@@ -22,23 +27,25 @@ pipeline {
             }
         }
 
-        stage('Verify K8s Access') {
+        stage('Prepare kubeconfig (create in workspace)') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
+                // Use an image with aws cli (or ensure aws cli exists on agent)
+                // Using docker is optional — if your agent has aws CLI you can run shell directly.
+                script {
                     sh '''
-                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                    export AWS_DEFAULT_REGION=us-west-2
+                    echo ">>> aws version:"
+                    aws --version || true
 
-                    echo ">>> Updating kubeconfig"
-                    aws eks update-kubeconfig --name k-mern-clus --region us-west-2
+                    echo ">>> Creating kubeconfig for EKS cluster into ${KUBECONFIG}"
+                    aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${REGION} --kubeconfig ${KUBECONFIG}
 
-                    echo ">>> Cluster Info"
-                    kubectl get nodes
-                    kubectl get pods -A
+                    echo ">>> Validate kubeconfig file:"
+                    ls -l ${KUBECONFIG}
+                    grep -E "exec:|users:" ${KUBECONFIG} || true
+
+                    echo ">>> Test kubectl connectivity"
+                    kubectl --kubeconfig ${KUBECONFIG} get nodes || true
+                    kubectl --kubeconfig ${KUBECONFIG} get pods -A || true
                     '''
                 }
             }
@@ -46,28 +53,41 @@ pipeline {
 
         stage('Helm Lint & Render (dry-run)') {
             steps {
-                withCredentials([file(credentialsId: env.KUBECONFIG_CRED_ID, variable: 'KUBECONFIG_FILE')]) {
-                sh '''
-                    export KUBECONFIG="$KUBECONFIG_FILE"
-                    kubectl get ns ${CHART_PATH} || kubectl create ns ${CHART_PATH}
+                script {
+                    // Ensure KUBECONFIG env var points to ${WORKSPACE}/kubeconfig (set above)
+                    sh '''
+                    set -o pipefail
+                    kubectl --kubeconfig ${KUBECONFIG} get ns ${CHART_PATH} || kubectl --kubeconfig ${KUBECONFIG} create ns ${CHART_PATH}
+
+                    helm lint ${CHART_PATH}
                     helm upgrade --install learner-report ${CHART_PATH} \
-                    -n ${CHART_PATH} -f deployment/environments/values-dev.yaml \
-                    --set frontend.image=${FRONTEND_IMAGE},frontend.tag=${FE_TAG} \
-                    --set backend.image=${BACKEND_IMAGE},backend.tag=${BE_TAG}
-                '''
+                      -n ${CHART_PATH} -f deployment/environments/values-dev.yaml \
+                      --set frontend.image=${FRONTEND_IMAGE} \
+                      --set backend.image=${BACKEND_IMAGE} \
+                      --dry-run --debug
+                    '''
                 }
             }
         }
 
-        
+        stage('Deploy') {
+            steps {
+                sh '''
+                helm upgrade --install learner-report ${CHART_PATH} \
+                  -n ${CHART_PATH} -f deployment/environments/values-dev.yaml \
+                  --set frontend.image=${FRONTEND_IMAGE} \
+                  --set backend.image=${BACKEND_IMAGE}
+                '''
+            }
+        }
     }
 
     post {
         failure {
             echo "Deployment failed — printing troubleshooting info:"
             sh '''
-            kubectl get pods -A
-            kubectl describe pods -A | sed -n '1,200p'
+            kubectl --kubeconfig ${KUBECONFIG} get pods -A || true
+            kubectl --kubeconfig ${KUBECONFIG} describe pods -A | sed -n '1,200p' || true
             '''
         }
     }
